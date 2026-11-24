@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pharma Expiry Toolkit</title>
+<style>
+  :root {
+    --bg: #f4f6f8; --card: #ffffff; --ink: #1c2b33; --muted: #5b6b74;
+    --accent: #0b7285; --ok: #2b8a3e; --bad: #c92a2a; --line: #dde4e8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.5;
+  }
+  header {
+    background: var(--accent); color: #fff; padding: 20px 16px;
+    display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+  }
+  header h1 { font-size: 1.25rem; margin: 0; }
+  header p { margin: 2px 0 0; font-size: .85rem; opacity: .9; }
+  #langToggle {
+    background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.5);
+    padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: .9rem;
+  }
+  main { max-width: 720px; margin: 24px auto; padding: 0 16px 48px; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px; margin-bottom: 20px;
+  }
+  .card h2 { margin-top: 0; font-size: 1.05rem; color: var(--accent); }
+  label { display: block; font-size: .85rem; color: var(--muted); margin: 12px 0 4px; }
+  input, select {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: 1rem; background: #fff;
+  }
+  .row { display: flex; gap: 12px; } .row > div { flex: 1; }
+  button.calc {
+    margin-top: 16px; width: 100%; padding: 12px; border: 0; border-radius: 6px;
+    background: var(--accent); color: #fff; font-size: 1rem; cursor: pointer;
+  }
+  button.calc:hover { filter: brightness(1.1); }
+  .result { margin-top: 16px; padding: 14px; border-radius: 8px; background: var(--bg); display: none; }
+  .result.show { display: block; }
+  .result .big { font-size: 1.3rem; font-weight: 700; }
+  .pass { color: var(--ok); } .fail { color: var(--bad); }
+  .bar { height: 10px; border-radius: 5px; background: var(--line); margin-top: 8px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--accent); }
+  footer { text-align: center; color: var(--muted); font-size: .8rem; padding: 16px; }
+  [dir="rtl"] body { font-family: Tahoma, "Segoe UI", Arial, sans-serif; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 data-i18n="title">Pharma Expiry Toolkit</h1>
+    <p data-i18n="subtitle">Expiry dates and remaining shelf life for pharmaceutical lots</p>
+  </div>
+  <button id="langToggle" type="button">عربي</button>
+</header>
+
+<main>
+  <section class="card">
+    <h2 data-i18n="calcTitle">1. Expiry date calculator</h2>
+    <label data-i18n="mfgDate">Manufacturing date</label>
+    <input type="date" id="mfgDate">
+    <div class="row">
+      <div>
+        <label data-i18n="shelfLife">Shelf life (months)</label>
+        <input type="number" id="shelfMonths" min="1" step="1" value="24">
+      </div>
+      <div>
+        <label data-i18n="convention">Counting convention</label>
+        <select id="convention">
+          <option value="eom" data-i18n="convEom">End of expiry month (pharma standard)</option>
+          <option value="exact" data-i18n="convExact">Exact day</option>
+        </select>
+      </div>
+    </div>
+    <button class="calc" id="calcExpiry" type="button" data-i18n="calcBtn">Calculate expiry</button>
+    <div class="result" id="expiryResult"></div>
+  </section>
+
+  <section class="card">
+    <h2 data-i18n="lotTitle">2. Lot receipt check (remaining shelf life)</h2>
+    <div class="row">
+      <div>
+        <label data-i18n="lotMfg">Manufacturing date</label>
+        <input type="date" id="lotMfg">
+      </div>
+      <div>
+        <label data-i18n="lotExp">Expiry date</label>
+        <input type="date" id="lotExp">
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label data-i18n="checkDate">Receipt / check date</label>
+        <input type="date" id="checkDate">
+      </div>
+      <div>
+        <label data-i18n="minPct">Minimum remaining % required</label>
+        <input type="number" id="minPct" min="0" max="100" step="1" value="75">
+      </div>
+    </div>
+    <button class="calc" id="calcLot" type="button" data-i18n="lotBtn">Check lot</button>
+    <div class="result" id="lotResult"></div>
+  </section>
+</main>
+
+<footer data-i18n="footer">Free and open source (MIT). Dates are calculated locally in your browser; nothing is uploaded.</footer>
+
+<script src="expiry-core.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var STR = {
+    en: {
+      title: "Pharma Expiry Toolkit",
+      subtitle: "Expiry dates and remaining shelf life for pharmaceutical lots",
+      calcTitle: "1. Expiry date calculator",
+      mfgDate: "Manufacturing date",
+      shelfLife: "Shelf life (months)",
+      convention: "Counting convention",
+      convEom: "End of expiry month (pharma standard)",
+      convExact: "Exact day",
+      calcBtn: "Calculate expiry",
+      lotTitle: "2. Lot receipt check (remaining shelf life)",
+      lotMfg: "Manufacturing date",
+      lotExp: "Expiry date",
+      checkDate: "Receipt / check date",
+      minPct: "Minimum remaining % required",
+      lotBtn: "Check lot",
+      footer: "Free and open source (MIT). Dates are calculated locally in your browser; nothing is uploaded.",
+      expiryIs: "Expiry date",
+      pickDate: "Please fill in every field.",
+      remaining: "remaining",
+      daysLeft: "days left",
+      pass: "ACCEPT",
+      fail: "REJECT",
+      expiredMsg: "Lot is expired.",
+      toggle: "عربي"
+    },
+    ar: {
+      title: "أداة صلاحية الأدوية",
+      subtitle: "حساب تاريخ الانتهاء والصلاحية المتبقية للتشغيلات الدوائية",
+      calcTitle: "١. حساب تاريخ الانتهاء",
+      mfgDate: "تاريخ الإنتاج",
+      shelfLife: "مدة الصلاحية (بالشهور)",
+      convention: "طريقة الحساب",
+      convEom: "نهاية شهر الانتهاء (المتعارف عليه صيدلانياً)",
+      convExact: "نفس اليوم بالضبط",
+      calcBtn: "احسب تاريخ الانتهاء",
+      lotTitle: "٢. فحص التشغيلة عند الاستلام (الصلاحية المتبقية)",
+      lotMfg: "تاريخ الإنتاج",
+      lotExp: "تاريخ الانتهاء",
+      checkDate: "تاريخ الاستلام / الفحص",
+      minPct: "الحد الأدنى المطلوب من النسبة المتبقية %",
+      lotBtn: "افحص التشغيلة",
+      footer: "مشروع مفتوح المصدر (رخصة MIT). كل الحسابات تتم على جهازك ولا يتم رفع أي بيانات.",
+      expiryIs: "تاريخ الانتهاء",
+      pickDate: "من فضلك املأ كل الخانات.",
+      remaining: "متبقٍ",
+      daysLeft: "يوم متبقٍ",
+      pass: "قبول",
+      fail: "رفض",
+      expiredMsg: "التشغيلة منتهية الصلاحية.",
+      toggle: "English"
+    }
+  };
+
+  var lang = "en";
+
+  function t(key) { return STR[lang][key] || key; }
+
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    document.getElementById("langToggle").textContent = t("toggle");
+    document.getElementById("expiryResult").classList.remove("show");
+    document.getElementById("lotResult").classList.remove("show");
+  }
+
+  document.getElementById("langToggle").addEventListener("click", function () {
+    lang = lang === "en" ? "ar" : "en";
+    applyLang();
+  });
+
+  function fmtDate(iso) {
+    var d = ExpiryCore.toDate(iso);
+    return d.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-GB", {
+      year: "numeric", month: "long", day: "numeric"
+    });
+  }
+
+  document.getElementById("calcExpiry").addEventListener("click", function () {
+    var box = document.getElementById("expiryResult");
+    var mfg = document.getElementById("mfgDate").value;
+    var months = parseInt(document.getElementById("shelfMonths").value, 10);
+    var eom = document.getElementById("convention").value === "eom";
+    if (!mfg || !months) { box.textContent = t("pickDate"); box.classList.add("show"); return; }
+    var exp = ExpiryCore.addMonths(mfg, months, eom);
+    box.innerHTML = t("expiryIs") + ': <span class="big">' + fmtDate(ExpiryCore.formatISO(exp)) + "</span>";
+    box.classList.add("show");
+  });
+
+  document.getElementById("calcLot").addEventListener("click", function () {
+    var box = document.getElementById("lotResult");
+    var mfg = document.getElementById("lotMfg").value;
+    var exp = document.getElementById("lotExp").value;
+    var check = document.getElementById("checkDate").value;
+    var minPct = parseFloat(document.getElementById("minPct").value);
+    if (!mfg || !exp || !check || isNaN(minPct)) { box.textContent = t("pickDate"); box.classList.add("show"); return; }
+    var r = ExpiryCore.evaluateLot(mfg, exp, check, minPct);
+    var pct = Math.max(0, Math.min(100, r.remainingPercent));
+    var verdict = r.expired ? t("expiredMsg")
+      : (r.passes ? '<span class="pass">' + t("pass") + "</span>" : '<span class="fail">' + t("fail") + "</span>");
+    box.innerHTML =
+      '<span class="big">' + pct.toFixed(1) + "% " + t("remaining") + "</span> (" + r.daysRemaining + " " + t("daysLeft") + ")<br>" +
+      verdict +
+      '<div class="bar"><span style="width:' + pct + '%"></span></div>';
+    box.classList.add("show");
+  });
+
+  document.getElementById("checkDate").valueAsDate = new Date();
+  applyLang();
+})();
+</script>
+</body>
+</html>
